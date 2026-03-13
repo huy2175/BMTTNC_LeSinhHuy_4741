@@ -4,7 +4,7 @@ from cipher.vigenere.vigenere_cipher import VigenereCipher
 # SỬA DÒNG NÀY: Trỏ trực tiếp vào file railfence_cipher.py
 from cipher.railfence.railfence_cipher import RailFenceCipher
 from cipher.playfair.playfair_cipher import PlayfairCipher
-
+from cipher.transposition import TranspositionCipher
 app = Flask(__name__)
 
 # Khởi tạo đối tượng cho các thuật toán
@@ -12,6 +12,7 @@ caesar_cipher = CaesarCipher()
 vigenere_cipher = VigenereCipher()
 railfence_cipher = RailFenceCipher()
 playfair_cipher = PlayfairCipher()
+transposition_cipher = TranspositionCipher()
 # ----------------- CAESAR ENDPOINTS -----------------
 @app.route("/api/caesar/encrypt", methods=["POST"])
 def caesar_encrypt():
@@ -90,5 +91,22 @@ def playfair_decrypt():
     decrypted_text = playfair_cipher.playfair_decrypt(cipher_text, key)
     return jsonify({'decrypted_text': decrypted_text})
 
+# ----------------- TRANSPOSITION ENDPOINTS (2.5.5) -----------------
+
+@app.route('/api/transposition/encrypt', methods=['POST'])
+def transposition_encrypt():
+    data = request.get_json()
+    plain_text = data.get('plain_text', "")
+    key = int(data.get('key', 0))
+    res = transposition_cipher.encrypt(plain_text, key)
+    return jsonify({'encrypted_text': res})
+
+@app.route('/api/transposition/decrypt', methods=['POST'])
+def transposition_decrypt():
+    data = request.get_json()
+    cipher_text = data.get('cipher_text', "")
+    key = int(data.get('key', 0))
+    res = transposition_cipher.decrypt(cipher_text, key)
+    return jsonify({'decrypted_text': res})
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
