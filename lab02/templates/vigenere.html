@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Caesar Cipher{% endblock %}
+{% block title %}Vigenere Cipher{% endblock %}
 
 {% block content %}
 <a href="/" class="back-link">← Về trang chủ</a>
 
-<h2>CAESAR CIPHER</h2>
+<h2>VIGENERE CIPHER</h2>
 <div class="title-divider"></div>
 
 <div class="form-section">
     <div class="section-title">Encryption</div>
-    <form method="POST" action="/encrypt">
+    <form method="POST" action="/vigenere_encrypt">
         <label>Plain text</label>
         <input type="text" name="inputPlainText" placeholder="Nhập văn bản cần mã hóa..." required autofocus value="{{ plain_text if plain_text else '' }}"/>
         
-        <label>Key (Number)</label>
-        <input type="number" name="inputKeyPlain" placeholder="Nhập khóa..." required value="{{ plain_key if plain_key else '' }}"/>
+        <label>Key (Text)</label>
+        <input type="text" name="inputKeyPlain" placeholder="Nhập khóa..." required value="{{ plain_key if plain_key else '' }}"/>
         
         <button type="submit" class="btn-encrypt">Mã hóa (Encrypt)</button>
     </form>
@@ -30,12 +30,12 @@
 
 <div class="form-section">
     <div class="section-title">Decryption</div>
-    <form method="POST" action="/decrypt">
+    <form method="POST" action="/vigenere_decrypt">
         <label>Cipher text</label>
         <input type="text" name="inputCipherText" placeholder="Nhập văn bản cần giải mã..." required value="{{ cipher_text if cipher_text else '' }}"/>
         
-        <label>Key (Number)</label>
-        <input type="number" name="inputKeyCipher" placeholder="Nhập khóa..." required value="{{ cipher_key if cipher_key else '' }}"/>
+        <label>Key (Text)</label>
+        <input type="text" name="inputKeyCipher" placeholder="Nhập khóa..." required value="{{ cipher_key if cipher_key else '' }}"/>
         
         <button type="submit" class="btn-decrypt">Giải mã (Decrypt)</button>
     </form>
