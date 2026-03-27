@@ -1,2 +1,4 @@
-PyQt5
-requests
+flask==3.0.0
+rsa==4.9
+pyqt5==5.15.9
+pyqt5-tools==5.15.9.3.3
