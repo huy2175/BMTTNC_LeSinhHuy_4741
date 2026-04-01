@@ -1,0 +1,1 @@
+# Dùng thư viện chuẩn Python (hashlib). Nếu cần thêm thì pip install.

@@ -1,10 +1,8 @@
 import socket
 import threading
-import os
+import json
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Random import get_random_bytes
-import json
 
 class Server:
     def __init__(self, host='127.0.0.1', port=12345):
@@ -12,60 +10,78 @@ class Server:
         self.port = port
         self.server_socket = None
         self.clients = []
-        
+
         # Tạo RSA key pair cho server
         self.server_private_key = RSA.generate(2048)
         self.server_public_key = self.server_private_key.publickey()
-        
-        # Lưu public key ra file
+
         with open('server_public_key.pem', 'wb') as f:
             f.write(self.server_public_key.export_key())
-        
+
         print("[SERVER] RSA Key pair generated")
         print(f"[SERVER] Public key saved to server_public_key.pem")
 
     def handle_client(self, client_socket, address):
         """Xử lý kết nối từ client"""
         print(f"[SERVER] New connection from {address}")
-        
+
+        # Gửi public key của server cho client
+        public_key_pem = self.server_public_key.export_key()
+        client_socket.sendall(len(public_key_pem).to_bytes(4, 'big'))
+        client_socket.sendall(public_key_pem)
+
+        self.clients.append(client_socket)
+
         try:
-            # Gửi public key của server cho client
-            public_key_pem = self.server_public_key.export_key()
-            client_socket.sendall(len(public_key_pem).to_bytes(4, 'big'))
-            client_socket.sendall(public_key_pem)
-            
             while True:
                 # Nhận độ dài message
                 msg_length_bytes = client_socket.recv(4)
                 if not msg_length_bytes:
                     break
-                
+
                 msg_length = int.from_bytes(msg_length_bytes, 'big')
-                
-                # Nhận message đã mã hóa
-                encrypted_data = b''
-                while len(encrypted_data) < msg_length:
-                    packet = client_socket.recv(msg_length - len(encrypted_data))
+
+                # Nhận payload
+                payload = b''
+                while len(payload) < msg_length:
+                    packet = client_socket.recv(msg_length - len(payload))
                     if not packet:
                         break
-                    encrypted_data += packet
-                
-                if not encrypted_data:
+                    payload += packet
+
+                if not payload:
                     break
-                
-                # Giải mã và hiển thị
+
                 try:
-                    decrypted_msg = encrypted_data.decode('utf-8', errors='ignore')
-                    print(f"[SERVER] Received from {address}: {decrypted_msg}")
-                    
-                    # Gửi phản hồi
-                    response = f"Server received: {decrypted_msg}"
-                    client_socket.sendall(len(response.encode()).to_bytes(4, 'big'))
-                    client_socket.sendall(response.encode())
-                    
+                    request = json.loads(payload.decode())
+                    encrypted_key = bytes.fromhex(request['encrypted_key'])
+                    nonce = bytes.fromhex(request['nonce'])
+                    ciphertext = bytes.fromhex(request['ciphertext'])
+                    tag = bytes.fromhex(request['tag'])
+
+                    # Giải mã session key bằng RSA
+                    rsa_cipher = PKCS1_OAEP.new(self.server_private_key)
+                    session_key = rsa_cipher.decrypt(encrypted_key)
+
+                    # Giải mã AES
+                    aes_cipher = AES.new(session_key, AES.MODE_EAX, nonce=nonce)
+                    decrypted_bytes = aes_cipher.decrypt_and_verify(ciphertext, tag)
+                    decrypted_msg = decrypted_bytes.decode('utf-8')
+
+                    print(f"[SERVER] From {address}: {decrypted_msg}")
+
+                    # Gửi message tới tất cả clients (broadcast)
+                    out = f"From {address}: {decrypted_msg}".encode()
+                    out_len = len(out).to_bytes(4, 'big')
+                    for c in list(self.clients):
+                        try:
+                            c.sendall(out_len + out)
+                        except Exception:
+                            self.clients.remove(c)
+
                 except Exception as e:
-                    print(f"[SERVER] Error decrypting: {e}")
-                    
+                    print(f"[SERVER] Error decoding request: {e}")
+
         except Exception as e:
             print(f"[SERVER] Error handling client {address}: {e}")
         finally:
@@ -87,7 +103,6 @@ class Server:
         try:
             while True:
                 client_socket, address = self.server_socket.accept()
-                self.clients.append(client_socket)
                 
                 # Tạo thread mới để xử lý client
                 client_thread = threading.Thread(
