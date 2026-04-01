@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>AES-RSA Socket Web UI</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      #messages { width: 100%; height: 300px; border: 1px solid #ccc; overflow: auto; margin-bottom: 8px; padding: 6px; white-space: pre-wrap; }
+      #status { margin-bottom: 12px; }
+      button { margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <h2>AES-RSA Socket Web UI</h2>
+    <div id="status">Status: <span id="statusText">Disconnected</span></div>
+    <div id="messages"></div>
+    <input id="message" style="width:70%;" placeholder="Type message..." />
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="connectServer()">Connect</button>
+
+    <script>
+      async function connectServer() {
+        try {
+          const res = await fetch('/connect');
+          const j = await res.json();
+          document.getElementById('statusText').textContent = j.status;
+          alert(j.message);
+        } catch (err) {
+          document.getElementById('statusText').textContent = 'Error';
+          alert('Connect failed: ' + err);
+          console.error('Connect call exception', err);
+        }
+      }
+
+      async function sendMessage() {
+        const msg = document.getElementById('message').value;
+        if (!msg) return;
+        const res = await fetch('/send', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ message: msg })
+        });
+        const j = await res.json();
+        if (!j.success) {
+          alert('Send failed: ' + j.message);
+        }
+        document.getElementById('message').value = '';
+      }
+
+      async function poll() {
+        const res = await fetch('/poll');
+        const j = await res.json();
+        if (j.messages.length) {
+          const box = document.getElementById('messages');
+          for (let m of j.messages) {
+            box.textContent += m + '\n';
+          }
+          box.scrollTop = box.scrollHeight;
+        }
+      }
+
+      setInterval(poll, 500);
+    </script>
+  </body>
+</html>
